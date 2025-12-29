@@ -152,9 +152,9 @@ void MemoryManager::showStats() {
             usedMemory += block.size;
         }
     }
-    
     std::cout << "Total Memory: " << totalMemorySize << std::endl;
     std::cout << "Used Memory:  " << usedMemory << std::endl;
     std::cout << "Free Memory:  " << freeMemory << std::endl;
     std::cout << "External Fragmentation (Free Blocks): " << fragments << std::endl;
+    std::cout << "External Fragmentation (Percentage): " << (totalMemorySize ? (freeMemory * 100.0 / totalMemorySize) : 0) << "%" << std::endl;
 }

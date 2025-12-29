@@ -1,6 +1,5 @@
 #ifndef CACHE_H
 #define CACHE_H
-
 #include <vector>
 #include <string>
 #include <cmath>
@@ -56,6 +55,7 @@ class CacheController {
 private:
     CacheLevel* l1;
     CacheLevel* l2;
+    CacheLevel* l3;
 
 public:
     CacheController();

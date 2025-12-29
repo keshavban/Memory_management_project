@@ -1,61 +1,103 @@
-#include "../include/VirtualMemory.h"
+#include "VirtualMemory.h"
 #include <iostream>
+#include <climits>
 
-MMU::MMU(size_t size, MemoryManager* mem) 
-    : pageSize(size), memoryManager(mem), pageFaults(0), translations(0) {}
+using namespace std;
 
-long long MMU::translateAddress(long long virtualAddress) {
-    translations++;
-    
-    // 1. Calculate VPN and Offset
-    int vpn = virtualAddress / pageSize;
-    int offset = virtualAddress % pageSize;
+VirtualMemory::VirtualMemory(int va_bits,
+                             int ps,
+                             int phys_mem,
+                             const string& policy)
+    : virtual_address_bits(va_bits),
+      page_size(ps),
+      physical_memory_size(phys_mem),
+      replacement_policy(policy),
+      timer(0),
+      page_hits(0),
+      page_faults(0),
+      disk_accesses(0) {
 
-    // 2. Check Page Table
-    if (pageTable.find(vpn) != pageTable.end() && pageTable[vpn].valid) {
-        // --- TLB HIT (Simulated) ---
-        // In a real CPU, we'd check a TLB first. Here we just go straight to Page Table.
-        int frameNumber = pageTable[vpn].frameNumber;
-        long long physicalAddress = (frameNumber * pageSize) + offset;
-        
-        // Debug output (Optional, helps see what's happening)
-        // std::cout << "DEBUG: VPN " << vpn << " -> Frame " << frameNumber << std::endl;
-        
-        return physicalAddress;
-    } 
-    else {
-        // --- PAGE FAULT ---
-        std::cout << "  -> Page Fault! (VPN " << vpn << " not in memory)" << std::endl;
-        pageFaults++;
-
-        // 3. Handle Fault: Allocate Physical Memory Frame
-        // We use our Phase 1 Memory Manager to find a free block for this page
-        // Note: In a real OS, we might evict an old page here (Page Replacement).
-        // For this simulation, we allocate a new block.
-        
-        // We need to capture the address allocated by MemoryManager.
-        // Since our MemoryManager::allocate currently just prints and returns bool,
-        // we will assume a simpler "Next Free Frame" logic or modify MemoryManager.
-        // **Simplification for this Project Scale:**
-        // We will simulate physical memory simply by assigning a new Frame ID.
-        // We assume Physical Memory = Large Array of Frames.
-        
-        static int nextFreeFrame = 0; // Simple counter for simulation purposes
-        int allocatedFrame = nextFreeFrame++;
-        
-        // Update Page Table
-        pageTable[vpn].valid = true;
-        pageTable[vpn].frameNumber = allocatedFrame;
-        
-        std::cout << "  -> Page Loaded into Frame " << allocatedFrame << std::endl;
-
-        // Recursive call: Now that it's loaded, translate it again
-        return translateAddress(virtualAddress);
-    }
+    num_frames = physical_memory_size / page_size;
+    frame_owner.resize(num_frames, -1);
 }
 
-void MMU::showStats() {
-    std::cout << "--- MMU Stats ---" << std::endl;
-    std::cout << "Total Translations: " << translations << std::endl;
-    std::cout << "Page Faults: " << pageFaults << std::endl;
+int VirtualMemory::select_victim() {
+    if (replacement_policy == "FIFO") {
+        int victim = fifo_queue.front();
+        fifo_queue.pop();
+        return victim;
+    }
+
+    // LRU
+    int victim = -1;
+    int oldest = INT_MAX;
+
+    for (auto &p : page_table) {
+        if (p.second.valid && p.second.last_used < oldest) {
+            oldest = p.second.last_used;
+            victim = p.first;
+        }
+    }
+    return victim;
+}
+
+void VirtualMemory::handle_page_fault(int page) {
+    disk_accesses++;
+
+    int frame = -1;
+
+    // find free frame
+    for (int i = 0; i < num_frames; i++) {
+        if (frame_owner[i] == -1) {
+            frame = i;
+            break;
+        }
+    }
+
+    // eviction needed
+    if (frame == -1) {
+        int victim_page = select_victim();
+        frame = page_table[victim_page].frame;
+
+        page_table[victim_page].valid = false;
+        frame_owner[frame] = -1;
+    }
+
+    // load page
+    page_table[page] = {true, frame, timer};
+    frame_owner[frame] = page;
+
+    if (replacement_policy == "FIFO")
+        fifo_queue.push(page);
+}
+
+int VirtualMemory::translate(int virtual_address) {
+    timer++;
+
+    int page = virtual_address / page_size;
+    int offset = virtual_address % page_size;
+
+    if (page_table.count(page) && page_table[page].valid) {
+        page_hits++;
+        page_table[page].last_used = timer;
+        return page_table[page].frame * page_size + offset;
+    }
+
+    // page fault
+    page_faults++;
+    handle_page_fault(page);
+
+    return page_table[page].frame * page_size + offset;
+}
+
+void VirtualMemory::stats() const {
+    cout << "Page hits: " << page_hits << "\n";
+    cout << "Page faults: " << page_faults << "\n";
+    cout << "Disk accesses: " << disk_accesses << "\n";
+
+    int total = page_hits + page_faults;
+    if (total > 0) {
+        cout << "Page fault rate: "
+             << (double)page_faults / total * 100 << "%\n";
+    }
 }

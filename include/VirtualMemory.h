@@ -1,36 +1,48 @@
 #ifndef VIRTUAL_MEMORY_H
 #define VIRTUAL_MEMORY_H
 
+#include <unordered_map>
 #include <vector>
-#include <map>
-#include <iostream>
-#include "MemoryManager.h" // We need this to allocate Physical RAM for pages
+#include <queue>
+#include <string>
 
 struct PageTableEntry {
-    bool valid;         // Is this page currently in physical memory?
-    int frameNumber;    // The physical frame number (if valid)
-    
-    PageTableEntry() : valid(false), frameNumber(-1) {}
+    bool valid;
+    int frame;
+    int last_used;
 };
 
-class MMU {
+class VirtualMemory {
 private:
-    size_t pageSize;
-    std::map<int, PageTableEntry> pageTable; // Maps Virtual Page Number -> Entry
-    MemoryManager* memoryManager; // Reference to Physical Memory
+    int virtual_address_bits;
+    int page_size;
+    int physical_memory_size;
+    int num_frames;
 
-    // Stats
-    int pageFaults;
-    int translations;
+    int timer;
+
+    std::unordered_map<int, PageTableEntry> page_table;
+    std::vector<int> frame_owner;
+
+    std::queue<int> fifo_queue;
+    std::string replacement_policy;
+
+    int page_hits;
+    int page_faults;
+    int disk_accesses;
+
+    int select_victim();
+    void handle_page_fault(int page);
 
 public:
-    MMU(size_t pageSize, MemoryManager* mem);
-    
-    // The core function: Converts Virtual Address -> Physical Address
-    // Returns -1 if it fails (e.g., Out of Memory)
-    long long translateAddress(long long virtualAddress);
-    
-    void showStats();
+    VirtualMemory(int va_bits,
+                  int page_size,
+                  int phys_mem_size,
+                  const std::string& policy);
+
+    int translate(int virtual_address);
+
+    void stats() const;
 };
 
 #endif

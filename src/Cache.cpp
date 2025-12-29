@@ -23,7 +23,7 @@ CacheLevel::CacheLevel(std::string name, size_t size, size_t blkSize, int assoc,
 
 bool CacheLevel::access(unsigned long address, bool isWrite) {
     globalTime++; // Increment clock
-
+    
     // 1. Calculate Index and Tag
     // Index bits are derived from (Address / BlockSize) % NumSets
     unsigned long setIndex = (address / blockSize) % numSets;
@@ -101,32 +101,35 @@ CacheController::CacheController() {
     l1 = new CacheLevel("L1", 1024, 64, 2, "LRU");
     
     // L2: Larger. 4KB size, 64B block, 4-way associative, FIFO
-    l2 = new CacheLevel("L2", 4096, 64, 4, "FIFO");
+    l2 = new CacheLevel("L2", 4096, 64, 4, "LRU");
+    // L3: 16KB, 64B block, 8-way, FIFO (New Optional Feature)
+    l3 = new CacheLevel("L3", 16384, 64, 8, "FIFO");
 }
 
 CacheController::~CacheController() {
     delete l1;
     delete l2;
+    delete l3;
 }
 
 void CacheController::accessMemory(unsigned long address) {
-    std::cout << "\nCPU Request: Address 0x" << std::hex << address << std::dec << std::endl;
+    std::cout << "\nCPU Request: 0x" << std::hex << address << std::dec << std::endl;
 
-    // Check L1 first
     if (l1->access(address, false)) {
-        std::cout << "-> L1 Cache HIT" << std::endl;
+        std::cout << "-> L1 Hit" << std::endl;
     } else {
-        std::cout << "-> L1 Cache MISS" << std::endl;
-        
-        // If L1 misses, check L2
+        std::cout << "-> L1 Miss" << std::endl;
         if (l2->access(address, false)) {
-            std::cout << "-> L2 Cache HIT" << std::endl;
+            std::cout << "-> L2 Hit" << std::endl;
+            // Ideally promote to L1 here
         } else {
-            std::cout << "-> L2 Cache MISS (Accessing Main Memory...)" << std::endl;
-            // In a real system, we would fetch from MemoryManager here and fill L2, then L1.
-            // For simulation, the 'access' method inside CacheLevel already "fills" the cache slot.
-        }
-        
+            std::cout << "-> L2 Miss" << std::endl;
+            // Check L3
+            if (l3->access(address, false)) {
+                std::cout << "-> L3 Hit" << std::endl;
+            } else {
+                std::cout << "-> L3 Miss (Accessing Main Memory)" << std::endl;
+            }
         // Note: Strict inclusion (L1 inside L2) isn't enforced here for simplicity,
         // but typically you fill L1 after an L2 hit/miss. 
         // We implicitly filled L1 in the logic above by calling access? 
@@ -140,8 +143,9 @@ void CacheController::accessMemory(unsigned long address) {
         // So L1 is now updated with this address. Correct.
     }
 }
-
+}
 void CacheController::showStats() {
     l1->showStats();
     l2->showStats();
+    l3->showStats();
 }
