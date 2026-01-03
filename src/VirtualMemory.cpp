@@ -43,6 +43,7 @@ int VirtualMemory::select_victim() {
 
 void VirtualMemory::handle_page_fault(int page) {
     disk_accesses++;
+    std::cout << "   [MMU] Page Fault! Virtual Page " << page << " is not in RAM." << std::endl;
 
     int frame = -1;
 
@@ -50,6 +51,7 @@ void VirtualMemory::handle_page_fault(int page) {
     for (int i = 0; i < num_frames; i++) {
         if (frame_owner[i] == -1) {
             frame = i;
+            std::cout << "   [MMU] Found Free Frame " << frame << "." << std::endl;
             break;
         }
     }
@@ -58,6 +60,9 @@ void VirtualMemory::handle_page_fault(int page) {
     if (frame == -1) {
         int victim_page = select_victim();
         frame = page_table[victim_page].frame;
+
+        std::cout << "   [MMU] RAM FULL! Evicting Virtual Page " << victim_page 
+                  << " from Frame " << frame << " (" << replacement_policy << ")" << std::endl;
 
         page_table[victim_page].valid = false;
         frame_owner[frame] = -1;
@@ -69,8 +74,9 @@ void VirtualMemory::handle_page_fault(int page) {
 
     if (replacement_policy == "FIFO")
         fifo_queue.push(page);
+        
+    std::cout << "   [MMU] Loaded Virtual Page " << page << " into Frame " << frame << std::endl;
 }
-
 int VirtualMemory::translate(int virtual_address) {
     timer++;
 

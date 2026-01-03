@@ -1,11 +1,9 @@
 #ifndef VIRTUAL_MEMORY_H
 #define VIRTUAL_MEMORY_H
-
 #include <unordered_map>
 #include <vector>
 #include <queue>
 #include <string>
-
 struct PageTableEntry {
     bool valid;
     int frame;

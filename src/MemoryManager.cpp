@@ -143,7 +143,6 @@ void MemoryManager::showStats() {
     size_t freeMemory = 0;
     size_t usedMemory = 0;
     int fragments = 0;
-
     for (const auto& block : memoryList) {
         if (block.isFree) {
             freeMemory += block.size;

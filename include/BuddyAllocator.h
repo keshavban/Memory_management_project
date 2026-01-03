@@ -18,6 +18,10 @@ private:
     // Map to track allocated blocks: ID -> Address (To support free by ID)
     std::map<int, size_t> idToAddressMap;
 
+    // NEW: Map to track original requested size: ID -> Requested Size
+    // Essential for calculating Internal Fragmentation
+    std::map<int, size_t> requestedSizeMap;
+
     size_t minBlockSize;
     int maxOrder;
 
@@ -28,6 +32,7 @@ public:
     bool allocate(size_t size) override;
     bool deallocate(int blockId) override;
     void dumpMemory() override;
+    void showStats() override; 
 
 private:
     void initializeBuddy();
