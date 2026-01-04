@@ -1,44 +1,48 @@
-#ifndef MEMORY_MANAGER_H
-#define MEMORY_MANAGER_H
+#ifndef MEMORYMANAGER_H
+#define MEMORYMANAGER_H
 
-#include <iostream>
 #include <vector>
 #include <list>
 #include <string>
+#include <iostream>
 
-// Represents a single block of memory
 struct MemoryBlock {
-    int id;                 
-    size_t startAddress;    
-    size_t size;            
-    bool isFree;            
-
-    MemoryBlock(int i, size_t start, size_t s, bool free)
+    int id;
+    size_t startAddress;
+    size_t size;
+    bool isFree;
+    
+    MemoryBlock(int i, size_t start, size_t s, bool free) 
         : id(i), startAddress(start), size(s), isFree(free) {}
 };
 
 class MemoryManager {
 protected:
     size_t totalMemorySize;
-    std::vector<char> physicalMemory; 
-    std::list<MemoryBlock> memoryList; // For First/Best/Worst Fit
-    int nextBlockId;      
-    std::string allocatorType; // <--- RESTORED THIS VARIABLE
+    std::vector<char> physicalMemory; // Simulating RAM
+    std::list<MemoryBlock> memoryList; // Linked list of blocks
+    int nextBlockId;
+    std::string allocatorType;
+
+    // --- NEW STATS COUNTERS ---
+    size_t numAllocRequests = 0;
+    size_t numSuccessfulAllocs = 0;
+    size_t numFailedAllocs = 0;
+    size_t numFrees = 0;
+    // --------------------------
 
 public:
     MemoryManager(size_t size);
     virtual ~MemoryManager() {}
 
-    virtual bool allocate(size_t size);          
-    virtual bool deallocate(int blockId);        
-    virtual void dumpMemory();                   
-    virtual void showStats();                    
-
-    // Standard specific helper
     void setAllocator(const std::string& type);
-
-protected:
-    void coalesce(); 
+    
+    virtual bool allocate(size_t size);
+    virtual bool deallocate(int blockId);
+    
+    void coalesce(); // Merges adjacent free blocks
+    virtual void dumpMemory(); // Visualizes memory
+    virtual void showStats(); // Prints the summary
 };
 
 #endif

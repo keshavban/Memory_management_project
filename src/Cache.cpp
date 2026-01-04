@@ -102,11 +102,15 @@ void CacheLevel::handleReplacement(int setIndex, unsigned long tag) {
     set.lines[victimIndex].lruTime = globalTime;
 }
 
+// >>> UPDATED FUNCTION <<<
 void CacheLevel::showStats() {
-    std::cout << "--- " << levelName << " Stats ---" << std::endl;
-    std::cout << "Hits: " << hits << " | Misses: " << misses << std::endl;
-    if (hits + misses > 0)
-        std::cout << "Hit Rate: " << (double)hits / (hits + misses) * 100.0 << "%" << std::endl;
+    long total = hits + misses;
+    double hitRate = (total > 0) ? (double)hits / total * 100.0 : 0.0;
+    
+    // Matches format: [L1] Hits: 4  Misses: 18  HitRate: 18.18%
+    std::cout << "[" << levelName << "] Hits: " << std::left << std::setw(6) << hits 
+              << " Misses: " << std::setw(6) << misses 
+              << " HitRate: " << std::fixed << std::setprecision(2) << hitRate << "%" << std::endl;
 }
 
 // ================= CacheController Implementation =================
@@ -125,7 +129,7 @@ CacheController::~CacheController() {
     delete l1; delete l2; delete l3;
 }
 
-// NEW: Runtime Configuration
+// Runtime Configuration
 void CacheController::configCache(std::string level, size_t size, size_t blockSize, int assoc, std::string policy) {
     if (level == "L1") {
         delete l1;
@@ -140,6 +144,7 @@ void CacheController::configCache(std::string level, size_t size, size_t blockSi
         std::cout << "Invalid Cache Level: " << level << std::endl;
     }
 }
+
 void CacheController::accessMemory(unsigned long address, bool isWrite) {
     std::cout << "\nCPU " << (isWrite ? "WRITE" : "READ") << " Request: 0x" << std::hex << address << std::dec << std::endl;
     
@@ -179,19 +184,23 @@ void CacheController::accessMemory(unsigned long address, bool isWrite) {
     // Add this request's cost to the total system history
     totalAccessCycles += currentAccessCost;
 }
+
+// >>> UPDATED FUNCTION <<<
 void CacheController::showStats() {
-    std::cout << "==================================" << std::endl;
+    std::cout << "\n========== CACHE STATS ==========" << std::endl;
     l1->showStats();
     l2->showStats();
     l3->showStats();
     
-    std::cout << "----------------------------------" << std::endl;
-    std::cout << "Total Requests: " << totalRequests << std::endl;
-    std::cout << "Total Cycles:   " << totalAccessCycles << std::endl;
+    std::cout << "---------------------------------" << std::endl;
+    std::cout << "Total Requests : " << totalRequests << std::endl;
+    std::cout << "Total Cycles   : " << totalAccessCycles << std::endl;
     
     if (totalRequests > 0) {
         double amat = (double)totalAccessCycles / totalRequests;
-        std::cout << "AMAT (Avg Access Time): " << std::fixed << std::setprecision(2) << amat << " cycles" << std::endl;
+        std::cout << "AMAT           : " << std::fixed << std::setprecision(2) << amat << " cycles" << std::endl;
+    } else {
+        std::cout << "AMAT           : 0.00 cycles" << std::endl;
     }
-    std::cout << "==================================" << std::endl;
+    std::cout << "=================================" << std::endl;
 }
