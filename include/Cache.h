@@ -55,7 +55,16 @@ private:
     CacheLevel* l1;
     CacheLevel* l2;
     CacheLevel* l3;
+// NEW: Latency Tracking
+    unsigned long long totalAccessCycles;
+    unsigned long long totalRequests;
 
+    // Simulation Constants (Latencies in "Cycles")
+    const int L1_LATENCY = 1;
+    const int L2_LATENCY = 10;
+    const int L3_LATENCY = 100;
+    const int RAM_LATENCY = 500;
+    
 public:
     CacheController();
     ~CacheController();

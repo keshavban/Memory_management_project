@@ -116,6 +116,9 @@ CacheController::CacheController() {
     l1 = new CacheLevel("L1", 1024, 64, 2, "LRU");
     l2 = new CacheLevel("L2", 4096, 64, 4, "LRU");
     l3 = new CacheLevel("L3", 16384, 64, 8, "FIFO");
+    // Initialize counters
+    totalAccessCycles = 0;
+    totalRequests = 0;
 }
 
 CacheController::~CacheController() {
@@ -137,29 +140,58 @@ void CacheController::configCache(std::string level, size_t size, size_t blockSi
         std::cout << "Invalid Cache Level: " << level << std::endl;
     }
 }
-
 void CacheController::accessMemory(unsigned long address, bool isWrite) {
     std::cout << "\nCPU " << (isWrite ? "WRITE" : "READ") << " Request: 0x" << std::hex << address << std::dec << std::endl;
+    
+    totalRequests++;
+    int currentAccessCost = 0;
 
+    // 1. Check L1
+    currentAccessCost += L1_LATENCY; // Always pay L1 cost
     if (l1->access(address, isWrite)) {
-        std::cout << "-> L1 Hit" << std::endl;
-    } else {
+        std::cout << "-> L1 Hit (Cost: " << currentAccessCost << " cycles)" << std::endl;
+    } 
+    else {
         std::cout << "-> L1 Miss" << std::endl;
+        
+        // 2. Check L2 (Penalty propagated)
+        currentAccessCost += L2_LATENCY;
         if (l2->access(address, isWrite)) {
-            std::cout << "-> L2 Hit" << std::endl;
-        } else {
+            std::cout << "-> L2 Hit (Cost: " << currentAccessCost << " cycles)" << std::endl;
+        } 
+        else {
             std::cout << "-> L2 Miss" << std::endl;
+            
+            // 3. Check L3 (Penalty propagated)
+            currentAccessCost += L3_LATENCY;
             if (l3->access(address, isWrite)) {
-                std::cout << "-> L3 Hit" << std::endl;
-            } else {
+                std::cout << "-> L3 Hit (Cost: " << currentAccessCost << " cycles)" << std::endl;
+            } 
+            else {
                 std::cout << "-> L3 Miss (Accessing Main Memory)" << std::endl;
+                // 4. Main Memory (Huge Penalty)
+                currentAccessCost += RAM_LATENCY;
+                std::cout << "-> Main Memory Access (Total Cost: " << currentAccessCost << " cycles)" << std::endl;
             }
         }
     }
+    
+    // Add this request's cost to the total system history
+    totalAccessCycles += currentAccessCost;
 }
-
 void CacheController::showStats() {
+    std::cout << "==================================" << std::endl;
     l1->showStats();
     l2->showStats();
     l3->showStats();
+    
+    std::cout << "----------------------------------" << std::endl;
+    std::cout << "Total Requests: " << totalRequests << std::endl;
+    std::cout << "Total Cycles:   " << totalAccessCycles << std::endl;
+    
+    if (totalRequests > 0) {
+        double amat = (double)totalAccessCycles / totalRequests;
+        std::cout << "AMAT (Avg Access Time): " << std::fixed << std::setprecision(2) << amat << " cycles" << std::endl;
+    }
+    std::cout << "==================================" << std::endl;
 }
