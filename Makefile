@@ -12,8 +12,11 @@ SOURCES = $(SRC_DIR)/main.cpp \
           $(SRC_DIR)/Cache.cpp \
           $(SRC_DIR)/VirtualMemory.cpp
 
-all:
+all: $(TARGET)
+$(TARGET):
 	$(CXX) $(CXXFLAGS) -I$(INC_DIR) $(SOURCES) -o $(TARGET)
-
+run: $(TARGET)
+	./$(TARGET)
 clean:
 	rm -f $(TARGET)
+

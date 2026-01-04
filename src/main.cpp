@@ -1,7 +1,7 @@
 #include "../include/MemoryManager.h"
 #include "../include/BuddyAllocator.h"
 #include "../include/Cache.h"
-#include "../include/virtualmemory.h" // Ensure this matches your filename
+#include "../include/virtualmemory.h" 
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -9,28 +9,25 @@
 void printHelp() {
     std::cout << "\n--- Available Commands ---\n";
     std::cout << "  init <size>              : Initialize physical memory size\n";
+    std::cout << "  config cache <L1|L2> ... : Configure Cache (ex: config cache L1 2048 64 2)\n";
     std::cout << "  set allocator <type>     : Set allocator (first, best, worst, buddy)\n";
     std::cout << "  set policy <type>        : Set VM replacement policy (FIFO, LRU)\n";
-    std::cout << "  malloc <size>            : Allocate virtual memory block (Allocator Test)\n";
+    std::cout << "  malloc <size>            : Allocate virtual memory block\n";
     std::cout << "  free <id>                : Free memory block\n";
-    std::cout << "  access <virtual_addr>    : Access Address (Full System Test)\n";
-    std::cout << "  dump                     : Dump Allocator Map\n";
+    std::cout << "  read <virtual_addr>      : Read Address (Access)\n";
+    std::cout << "  write <virtual_addr>     : Write Address (Sets Dirty Bit)\n";
     std::cout << "  stats                    : Show All Stats\n";
     std::cout << "  exit                     : Exit\n";
     std::cout << "--------------------------\n";
 }
 
 int main() {
-    // 1. Configuration Constants
     size_t memorySize = 1024; 
     int pageSize = 64;        
     int vaBits = 16;          
 
-    // 2. Initialize Components
     MemoryManager* memSim = new MemoryManager(memorySize); 
     CacheController* cacheSim = new CacheController();
-    
-    // Initialize VM with default FIFO policy
     VirtualMemory* vm = new VirtualMemory(vaBits, pageSize, memorySize, "FIFO");
 
     std::cout << "System Initialized." << std::endl;
@@ -48,21 +45,29 @@ int main() {
         if (cmd == "exit") break;
         else if (cmd == "help") printHelp();
         
-        // --- CONFIGURATION COMMANDS ---
         else if (cmd == "init") {
             size_t size;
             if (ss >> size) {
-                // Resize everything to keep components in sync
                 memorySize = size;
-                delete memSim;
-                memSim = new MemoryManager(memorySize);
-                
-                delete vm;
-                vm = new VirtualMemory(vaBits, pageSize, memorySize, "FIFO");
-                
+                delete memSim; memSim = new MemoryManager(memorySize);
+                delete vm; vm = new VirtualMemory(vaBits, pageSize, memorySize, "FIFO");
                 std::cout << "Memory initialized to " << size << " bytes." << std::endl;
-            } else {
-                std::cout << "Usage: init <size>" << std::endl;
+            }
+        }
+        // --- NEW: CONFIG CACHE COMMAND ---
+        else if (cmd == "config") {
+            std::string subCmd;
+            ss >> subCmd;
+            if (subCmd == "cache") {
+                std::string level;
+                size_t size, blk;
+                int assoc;
+                // Default policy is LRU for simplicity in CLI
+                if (ss >> level >> size >> blk >> assoc) {
+                    cacheSim->configCache(level, size, blk, assoc, "LRU");
+                } else {
+                    std::cout << "Usage: config cache <Level> <Size> <BlockSize> <Assoc>" << std::endl;
+                }
             }
         }
         else if (cmd == "set") {
@@ -71,37 +76,24 @@ int main() {
 
             if (subCmd == "allocator") {
                 delete memSim;
-                if (type == "buddy") {
-                    memSim = new BuddyAllocator(memorySize);
-                    std::cout << "Allocator: Buddy System" << std::endl;
-                } else {
-                    memSim = new MemoryManager(memorySize);
-                    memSim->setAllocator(type);
-                    std::cout << "Allocator: " << type << std::endl;
-                }
+                if (type == "buddy") memSim = new BuddyAllocator(memorySize);
+                else { memSim = new MemoryManager(memorySize); memSim->setAllocator(type); }
+                std::cout << "Allocator: " << type << std::endl;
             } 
-            // FIX IS HERE: 'policy' is a sibling of 'allocator', not a child
             else if (subCmd == "policy") {
-                // Handle case-insensitivity manually
                 if (type == "FIFO" || type == "fifo") type = "FIFO";
                 else if (type == "LRU" || type == "lru") type = "LRU";
 
                 if (type == "FIFO" || type == "LRU") {
-                    // We must recreate the VM to apply the new policy
-                    // (Preserving the current memory size setting)
                     delete vm;
                     vm = new VirtualMemory(vaBits, pageSize, memorySize, type);
                     std::cout << "VM Policy set to: " << type << std::endl;
                 } else {
-                    std::cout << "Invalid Policy. Use 'FIFO' or 'LRU'." << std::endl;
+                    std::cout << "Invalid Policy." << std::endl;
                 }
             } 
-            else {
-                std::cout << "Usage: set allocator <type> OR set policy <FIFO|LRU>" << std::endl;
-            }
         }
 
-        // --- ALLOCATOR COMMANDS ---
         else if (cmd == "malloc") {
             size_t size;
             if (ss >> size) memSim->allocate(size);
@@ -114,30 +106,32 @@ int main() {
             memSim->dumpMemory();
         }
 
-        // --- FULL SYSTEM ACCESS COMMAND ---
-        else if (cmd == "access") {
+        // --- READ / WRITE COMMANDS ---
+        else if (cmd == "read" || cmd == "access") {
             std::string addrStr;
             if (ss >> addrStr) {
                 try {
                     int virtualAddr = std::stoi(addrStr, nullptr, 0);
-                    std::cout << "[CPU] Access Virtual Address: 0x" << std::hex << virtualAddr << std::dec << std::endl;
-
-                    // 1. VM Translation (Virtual -> Physical)
                     int physicalAddr = vm->translate(virtualAddr);
-                    
-                    std::cout << "      -> Physical Address: 0x" << std::hex << physicalAddr << std::dec << std::endl;
-
-                    // 2. Cache Access (Physical)
-                    // (Only access cache if translation succeeded)
-                    cacheSim->accessMemory(physicalAddr);
-
-                } catch (...) {
-                    std::cout << "Invalid address." << std::endl;
-                }
+                    std::cout << "      -> Phys Addr: 0x" << std::hex << physicalAddr << std::dec << std::endl;
+                    // Pass isWrite = false
+                    cacheSim->accessMemory(physicalAddr, false); 
+                } catch (...) { std::cout << "Invalid address." << std::endl; }
+            }
+        }
+        else if (cmd == "write") {
+            std::string addrStr;
+            if (ss >> addrStr) {
+                try {
+                    int virtualAddr = std::stoi(addrStr, nullptr, 0);
+                    int physicalAddr = vm->translate(virtualAddr);
+                    std::cout << "      -> Phys Addr: 0x" << std::hex << physicalAddr << std::dec << std::endl;
+                    // Pass isWrite = true
+                    cacheSim->accessMemory(physicalAddr, true); 
+                } catch (...) { std::cout << "Invalid address." << std::endl; }
             }
         }
 
-        // --- STATS ---
         else if (cmd == "stats") {
             std::cout << "=== MEMORY ALLOCATOR STATS ===" << std::endl;
             memSim->showStats();
@@ -145,9 +139,6 @@ int main() {
             vm->stats();
             std::cout << "\n=== CACHE STATS ===" << std::endl;
             cacheSim->showStats();
-        }
-        else if (!cmd.empty()) {
-            std::cout << "Unknown command: " << cmd << std::endl;
         }
     }
 
