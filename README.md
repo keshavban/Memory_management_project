@@ -7,6 +7,70 @@ This project is designed to be both **educational** and **system-level accurate*
 * * * * *
 Demo Video : https://drive.google.com/drive/folders/1riwUC0uerW2EPpWUY7XWiLW0iuJxuHds?usp=sharing
 
+🚀 Getting Started
+------------------
+
+You can run this project in two ways: using the pre-compiled executable (Windows only) or by compiling the source code yourself.
+
+### Option 1: Quick Run (Windows)
+
+The easiest way to run the simulator without setting up a coding environment.
+
+1.  **Download** this repository.
+
+2.  Navigate to the `bin/` folder (or root, wherever you placed it).
+
+3.  Open **Command Prompt** or **PowerShell** in that folder.
+
+4.  Run the executable:
+
+    PowerShell
+
+    ```
+    .\memsim.exe
+
+    ```
+
+### Option 2: Build from Source (Developers)
+
+If you are on Linux/Mac, or want to modify the code, you will need to compile it.
+
+**Prerequisites:**
+
+-   **G++ Compiler** (MinGW for Windows, GCC for Linux/Mac)
+
+-   **Make** (Optional, for using the Makefile)
+
+#### Using Make (Git Bash / Linux)
+
+If you have `make` installed (e.g., via Git Bash on Windows or standard Linux terminal):
+
+Bash
+
+```
+make run
+
+```
+
+*This command will compile all source files, link them, create `memsim.exe`, and start the program automatically.*
+
+#### Manual Compilation
+
+If you don't have `make`, you can compile it manually with this single command:
+
+Bash
+
+```
+g++ src/*.cpp -o memsim
+
+```
+
+Then run it:
+
+-   **Windows:** `.\memsim.exe`
+
+-   **Linux/Mac:** `./memsim`
+
 📌 Project Overview
 -------------------
 
